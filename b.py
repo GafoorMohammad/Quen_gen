@@ -1,3 +1,4 @@
+import streamlit as st
 import os
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
@@ -176,54 +177,64 @@ def generate_matching_questions(syllabus, num_questions, difficulty):
 
 # Main Function
 def main():
-    input_type = input("Would you like to enter input via voice, audio, text file, or video? (voice/audio/file/video): ").strip().lower()
+    st.title("Educational Question Generator")
+    st.sidebar.header("Input Options")
 
-    if input_type == "voice":
-        syllabus = speech_to_text(input("Enter audio path: ").strip(), "en-US")
+    input_type = st.sidebar.radio("Select Input Type", ["Text", "File", "Video", "Audio"])
+    syllabus = None
 
-    elif input_type == "audio":
-        input_path = input("Enter the audio file path: ").strip()
-        language = input("Enter the language code (e.g., en-US): ").strip()
-        syllabus = speech_to_text(input_path, language)
-        print("\nTranscribed Text from Audio:")
-        print(syllabus)
+    if input_type == "Text":
+        syllabus = st.text_area("Enter Syllabus or Content")
 
-    elif input_type == "file":
-        file_path = input("Enter the file path: ").strip()
-        syllabus = load_text(file_path)
+    elif input_type == "File":
+        uploaded_file = st.file_uploader("Upload a PDF, Word, or Text file", type=["pdf", "docx", "txt"])
+        if uploaded_file is not None:
+            if uploaded_file.name.endswith('.pdf'):
+                syllabus = extract_text_from_pdf(uploaded_file)
+            elif uploaded_file.name.endswith('.docx'):
+                syllabus = extract_text_from_word(uploaded_file)
+            elif uploaded_file.name.endswith('.txt'):
+                syllabus = uploaded_file.read().decode("utf-8")
+            st.success("File uploaded successfully!")
 
-    elif input_type == "video":
-        video_path = input("Enter the video file path: ").strip()
-        language = input("Enter the language code for transcription (e.g., en-US): ").strip()
-        syllabus = convert_video_to_text(video_path, language)
-        print("\nTranscribed Text from Video:")
-        print(syllabus)
-    else:
-        print("Invalid option.")
-        return
+    elif input_type == "Video":
+        uploaded_video = st.file_uploader("Upload a Video file", type=["mp4", "mkv", "avi"])
+        if uploaded_video is not None:
+            with open("uploaded_video.mp4", "wb") as f:
+                f.write(uploaded_video.read())
+            audio_path = extract_audio_from_video("uploaded_video.mp4")
+            syllabus = speech_to_text(audio_path, "en-US")
+            st.success("Video processed successfully!")
 
-    print("Extracted Syllabus:", syllabus)
-    print("\nSelect question type:")
-    print("1. MCQ")
-    print("2. Fill in the Blanks")
-    print("3. True/False")
-    print("4. Matching")
-    question_type = input("Enter your choice (1/2/3/4): ").strip()
-    num_questions = int(input("Enter the number of questions to generate: "))
-    difficulty = input("Enter the difficulty level (easy, medium, or hard): ").strip().lower()
+    elif input_type == "Audio":
+        uploaded_audio = st.file_uploader("Upload an Audio file", type=["wav", "mp3", "m4a"])
+        if uploaded_audio is not None:
+            with open("uploaded_audio.wav", "wb") as f:
+                f.write(uploaded_audio.read())
+            syllabus = speech_to_text("uploaded_audio.wav", "en-US")
+            st.success("Audio processed successfully!")
 
-    if question_type == "1":
-        print(generate_mcq(syllabus, num_questions, difficulty))
-    elif question_type == "2":
-        print(generate_fill_in_the_blanks(syllabus, num_questions, difficulty))
-    elif question_type == "3":
-        print(generate_true_false(syllabus, num_questions, difficulty))
-    elif question_type == "4":
-        col1, col2 = generate_matching_questions(syllabus, num_questions, difficulty)
-        for left, right in zip(col1, col2):
-            print(f"{left} -> {right}")
-    else:
-        print("Invalid choice.")
+    if syllabus:
+        st.write("Extracted Syllabus:")
+        st.text_area("Extracted Content", syllabus, height=200)
+
+        st.header("Question Generator")
+        question_type = st.selectbox("Select Question Type", ["MCQ", "Fill in the Blanks", "True/False", "Matching"])
+        num_questions = st.number_input("Number of Questions", min_value=1, max_value=20, step=1)
+        difficulty = st.selectbox("Difficulty Level", ["Easy", "Medium", "Hard"]).lower()
+
+        if st.button("Generate Questions"):
+            with st.spinner("Generating questions..."):
+                if question_type == "MCQ":
+                    result = query_perplexity(f"Generate {num_questions} MCQs based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
+                elif question_type == "Fill in the Blanks":
+                    result = query_perplexity(f"Generate {num_questions} 'Fill in the Blanks' questions based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
+                elif question_type == "True/False":
+                    result = query_perplexity(f"Generate {num_questions} True/False questions based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
+                elif question_type == "Matching":
+                    result = query_perplexity(f"Generate {num_questions} matching questions based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
+                st.success("Questions Generated!")
+                st.text_area("Generated Questions", result, height=300)
 
 if __name__ == "__main__":
     main()

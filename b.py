@@ -8,8 +8,10 @@ import speech_recognition as sr
 from moviepy.editor import VideoFileClip
 import requests
 import random
+from pydub import AudioSegment
+# Load environment variables from .env 
+from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 # Get API key from environment variables
@@ -53,23 +55,69 @@ def prepare_voice_file(path: str) -> str:
         return wav_file
     else:
         raise ValueError(f'Unsupported audio format: {os.path.splitext(path)[1]}')
+    
+def convert_to_wav(input_audio, output_audio="converted_audio.wav"):
+    try:
+        audio = AudioSegment.from_file(input_audio)
+        audio.export(output_audio, format="wav")
+        return output_audio
+    except Exception as e:
+        raise ValueError(f"Error converting audio file: {e}")
+
 
 # Speech-to-text transcription
-def transcribe_audio(audio_data, language) -> str:
-    r = sr.Recognizer()
-    result = r.recognize_google(audio_data, language=language, show_all=True)
-    if isinstance(result, dict) and 'alternative' in result:
-        best_transcription = max(result['alternative'], key=lambda x: x['confidence'])['transcript']
+def transcribe_audio(audio_data, language="en-US"):
+    recognizer = sr.Recognizer()
+    try:
+        with sr.AudioFile(audio_data) as source:
+            audio = recognizer.record(source)
+        result = recognizer.recognize_google(audio, language=language, show_all=True)
+        
+        if not result or 'alternative' not in result:
+            return "No transcription available."
+
+        # Handle missing 'confidence' key
+        alternatives = result['alternative']
+        best_transcription = max(
+            alternatives,
+            key=lambda x: x.get('confidence', 0)  # Default confidence to 0 if missing
+        )['transcript']
         return best_transcription
-    else:
-        return result
+    except sr.UnknownValueError:
+        return "Could not understand the audio."
+    except sr.RequestError as e:
+        return f"Error with the speech recognition service: {e}"
+
 
 # Transcribe speech from audio file
-def speech_to_text(input_path: str, language: str) -> str:
-    wav_file = prepare_voice_file(input_path)
-    with sr.AudioFile(wav_file) as source:
-        audio_data = sr.Recognizer().record(source)
-        return transcribe_audio(audio_data, language)
+def speech_to_text(audio_path, language="en-US"):
+    recognizer = sr.Recognizer()
+    
+    try:
+        # Convert input audio to WAV format if necessary
+        wav_file = convert_to_wav(audio_path)
+
+        with sr.AudioFile(wav_file) as source:
+            audio_data = recognizer.record(source)
+        result = recognizer.recognize_google(audio_data, language=language, show_all=True)
+        
+        if not result or 'alternative' not in result:
+            return "No transcription available."
+
+        # Handle missing 'confidence' key
+        alternatives = result['alternative']
+        best_transcription = max(
+            alternatives,
+            key=lambda x: x.get('confidence', 0)
+        )['transcript']
+        return best_transcription
+    except sr.UnknownValueError:
+        return "Could not understand the audio."
+    except sr.RequestError as e:
+        return f"Error with the speech recognition service: {e}"
+    except ValueError as e:
+        return f"File conversion error: {e}"
+
 
 # Extract audio from video
 def extract_audio_from_video(video_path, output_audio_path="extracted_audio.wav"):

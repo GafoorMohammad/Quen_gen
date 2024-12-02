@@ -225,7 +225,12 @@ def generate_matching_questions(syllabus, num_questions, difficulty):
 
 # Main Function
 def main():
-    st.title("Educational Question Generator")
+
+    st.write("API Key Length:", len(os.getenv("PERPLEXITY_API_KEY")))
+    st.write("API Key Value (truncated):", str(os.getenv("PERPLEXITY_API_KEY"))[:5] + "..." if os.getenv("PERPLEXITY_API_KEY") else "Not Found")
+
+    
+    st.title("Question Generator")
     st.sidebar.header("Input Options")
 
     input_type = st.sidebar.radio("Select Input Type", ["Text", "File", "Video", "Audio"])

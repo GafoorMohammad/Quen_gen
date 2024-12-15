@@ -8,6 +8,7 @@ import speech_recognition as sr
 from moviepy.editor import VideoFileClip
 import requests
 import random
+from googletrans import Translator
 from pydub import AudioSegment
 # Load environment variables from .env 
 from dotenv import load_dotenv
@@ -223,17 +224,53 @@ def generate_matching_questions(syllabus, num_questions, difficulty):
     random.shuffle(col2)
     return col1, col2
 
-# Main Function
-def main():
+# Initialize the translator
+translator = Translator()
 
-    st.write("API Key Length:", len(os.getenv("PERPLEXITY_API_KEY")))
-    st.write("API Key Value (truncated):", str(os.getenv("PERPLEXITY_API_KEY"))[:5] + "..." if os.getenv("PERPLEXITY_API_KEY") else "Not Found")
-
+def translate_text(text, dest_language):
+    """
+    Translate text to the desired language.
+    :param text: Input text to translate.
+    :param dest_language: Target language code (e.g., 'hi' for Hindi, 'kn' for Kannada).
+    :return: Translated text.
+    """
+    try:
+        translated = translator.translate(text, dest=dest_language)
+        return translated.text
+    except Exception as e:
+        return f"Error in translation: {e}"
     
-    st.title("Question Generator")
-    st.sidebar.header("Input Options")
+def generate_questions(syllabus, num_questions, question_type, difficulty):
+    """
+    Generate questions based on syllabus and other parameters.
+    :param syllabus: The input content/syllabus.
+    :param num_questions: Number of questions to generate.
+    :param question_type: Type of questions to generate ("MCQ", "Fill in the Blanks", etc.).
+    :param difficulty: Difficulty level of questions.
+    :return: Generated questions as a string.
+    """
+    # Simulating question generation based on input
+    generated_questions = []
+    for i in range(num_questions):
+        if question_type == "MCQ":
+            generated_questions.append(f"MCQ {i + 1}: [Question based on {syllabus}] (Difficulty: {difficulty})")
+        elif question_type == "Fill in the Blanks":
+            generated_questions.append(f"Fill in the Blanks {i + 1}: [Sentence based on {syllabus}] (Difficulty: {difficulty})")
+        elif question_type == "True/False":
+            generated_questions.append(f"True/False {i + 1}: [Statement based on {syllabus}] (Difficulty: {difficulty})")
+        elif question_type == "Matching":
+            generated_questions.append(f"Matching {i + 1}: [Pair based on {syllabus}] (Difficulty: {difficulty})")
+    
+    return "\n".join(generated_questions)
 
-    input_type = st.sidebar.radio("Select Input Type", ["Text", "File", "Video", "Audio"])
+
+
+# Main Function
+
+def main():
+    st.title("Multilingual Question Generator")
+
+    input_type = st.sidebar.selectbox("Select Input Type", ["Text", "File", "Video", "Audio"])
     syllabus = None
 
     if input_type == "Text":
@@ -248,7 +285,6 @@ def main():
                 syllabus = extract_text_from_word(uploaded_file)
             elif uploaded_file.name.endswith('.txt'):
                 syllabus = uploaded_file.read().decode("utf-8")
-            st.success("File uploaded successfully!")
 
     elif input_type == "Video":
         uploaded_video = st.file_uploader("Upload a Video file", type=["mp4", "mkv", "avi"])
@@ -257,7 +293,6 @@ def main():
                 f.write(uploaded_video.read())
             audio_path = extract_audio_from_video("uploaded_video.mp4")
             syllabus = speech_to_text(audio_path, "en-US")
-            st.success("Video processed successfully!")
 
     elif input_type == "Audio":
         uploaded_audio = st.file_uploader("Upload an Audio file", type=["wav", "mp3", "m4a"])
@@ -265,16 +300,22 @@ def main():
             with open("uploaded_audio.wav", "wb") as f:
                 f.write(uploaded_audio.read())
             syllabus = speech_to_text("uploaded_audio.wav", "en-US")
-            st.success("Audio processed successfully!")
 
     if syllabus:
-        st.write("Extracted Syllabus:")
+        st.subheader("Extracted Syllabus:")
         st.text_area("Extracted Content", syllabus, height=200)
 
-        st.header("Question Generator")
+        st.subheader("Question Generator")
         question_type = st.selectbox("Select Question Type", ["MCQ", "Fill in the Blanks", "True/False", "Matching"])
         num_questions = st.number_input("Number of Questions", min_value=1, max_value=20, step=1)
         difficulty = st.selectbox("Difficulty Level", ["Easy", "Medium", "Hard"]).lower()
+
+        # Extended language selection
+        output_language = st.selectbox("Select Output Language", [
+            "English", "Hindi", "Telugu", "Tamil", "Kannada", "Malayalam", "Marathi", 
+            "Gujarati", "Punjabi", "Bengali", "Urdu", "Spanish", "French", "German", 
+            "Chinese", "Japanese", "Russian"
+        ])
 
         if st.button("Generate Questions"):
             with st.spinner("Generating questions..."):
@@ -286,8 +327,18 @@ def main():
                     result = query_perplexity(f"Generate {num_questions} True/False questions based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
                 elif question_type == "Matching":
                     result = query_perplexity(f"Generate {num_questions} matching questions based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
+                else:
+                    st.error("Invalid Question Type Selected.")
+                    return
+
+                # Translate result if needed
+                if output_language != "English":
+                    translator = Translator()
+                    result = translator.translate(result, dest=output_language.lower()).text
+
                 st.success("Questions Generated!")
                 st.text_area("Generated Questions", result, height=300)
+
 
 if __name__ == "__main__":
     main()

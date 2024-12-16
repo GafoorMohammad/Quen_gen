@@ -223,23 +223,7 @@ def generate_matching_questions(syllabus, num_questions, difficulty):
     random.shuffle(col1)
     random.shuffle(col2)
     return col1, col2
-
-# Initialize the translator
-translator = Translator()
-
-def translate_text(text, dest_language):
-    """
-    Translate text to the desired language.
-    :param text: Input text to translate.
-    :param dest_language: Target language code (e.g., 'hi' for Hindi, 'kn' for Kannada).
-    :return: Translated text.
-    """
-    try:
-        translated = translator.translate(text, dest=dest_language)
-        return translated.text
-    except Exception as e:
-        return f"Error in translation: {e}"
-    
+  
 def generate_questions(syllabus, num_questions, question_type, difficulty):
     """
     Generate questions based on syllabus and other parameters.
@@ -310,12 +294,7 @@ def main():
         num_questions = st.number_input("Number of Questions", min_value=1, max_value=20, step=1)
         difficulty = st.selectbox("Difficulty Level", ["Easy", "Medium", "Hard"]).lower()
 
-        # Extended language selection
-        output_language = st.selectbox("Select Output Language", [
-            "English", "Hindi", "Telugu", "Tamil", "Kannada", "Malayalam", "Marathi", 
-            "Gujarati", "Punjabi", "Bengali", "Urdu", "Spanish", "French", "German", 
-            "Chinese", "Japanese", "Russian"
-        ])
+
 
         if st.button("Generate Questions"):
             with st.spinner("Generating questions..."):
@@ -331,10 +310,6 @@ def main():
                     st.error("Invalid Question Type Selected.")
                     return
 
-                # Translate result if needed
-                if output_language != "English":
-                    translator = Translator()
-                    result = translator.translate(result, dest=output_language.lower()).text
 
                 st.success("Questions Generated!")
                 st.text_area("Generated Questions", result, height=300)

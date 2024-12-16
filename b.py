@@ -8,7 +8,6 @@ import speech_recognition as sr
 from moviepy.editor import VideoFileClip
 import requests
 import random
-from googletrans import Translator
 from pydub import AudioSegment
 # Load environment variables from .env 
 from dotenv import load_dotenv

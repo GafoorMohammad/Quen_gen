@@ -137,6 +137,41 @@ def convert_video_to_text(video_path, language="en-US"):
         transcription = speech_to_text(audio_path, language)
         return transcription
     return "Failed to process the video."
+#Translation 
+def translate_text(text, target_language):
+    api_url = "https://translation.googleapis.com/language/translate/v2"
+    api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
+
+    params = {
+        "q": text,
+        "target": target_language,
+        "format": "text",
+        "key": api_key,
+    }
+    try:
+        response = requests.post(api_url, params=params)
+        response.raise_for_status()
+        result = response.json()
+        return result["data"]["translations"][0]["translatedText"]
+    except requests.exceptions.RequestException as e:
+        return f"Error during translation: {e}"
+
+def get_supported_languages():
+    api_url = "https://translation.googleapis.com/language/translate/v2/languages"
+    api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
+
+    params = {
+        "key": api_key,
+        "target": "en",  # Get language names in English
+    }
+    try:
+        response = requests.get(api_url, params=params)
+        response.raise_for_status()
+        result = response.json()
+        languages = {lang["name"]: lang["language"] for lang in result["data"]["languages"]}
+        return languages
+    except requests.exceptions.RequestException as e:
+        return {"Error": "Could not fetch languages"}
 
 # Perplexity-based question generation
 def query_perplexity(prompt, model=MODEL):
@@ -166,6 +201,7 @@ def query_perplexity(prompt, model=MODEL):
     except requests.exceptions.RequestException as e:
         return f"Error querying Perplexity API: {str(e)}"
 
+
 # Question generation functions with difficulty
 def generate_mcq(syllabus, num_questions, difficulty):
     prompt = f"""
@@ -183,8 +219,23 @@ def generate_fill_in_the_blanks(syllabus, num_questions, difficulty):
     Syllabus:
     {syllabus}
 
-    Based on the syllabus above, generate {num_questions} 'Fill in the Blanks' questions.
-    Provide the correct answers for each blank.
+    Instructions:
+    - Generate {num_questions} 'Fill in the Blanks' questions.
+    - Do NOT repeat any context or explanation from the syllabus within the questions.
+    - Format the output **strictly** as below, or the response will be considered incorrect.
+    - Include concise answers and explanations at the end.
+
+    Format:
+
+    Questions:
+    1. Fill in the blank: Question text with ____________.
+    2. Fill in the blank: Question text with ____________.
+
+    Answers:
+    1. Correct Answer - Brief Explanation
+    2. Correct Answer - Brief Explanation
+
+    Failure to strictly follow the format will result in rejection. Ensure all blanks are clear and concise.
     Difficulty Level: {difficulty}.
     """
     return query_perplexity(prompt)
@@ -205,10 +256,27 @@ def generate_matching_questions(syllabus, num_questions, difficulty):
     Syllabus:
     {syllabus}
 
-    Based on the syllabus above, generate {num_questions} matching questions.
-    Provide two columns of items where each item in column 1 matches with an item in column 2.
-    Difficulty Level: {difficulty}.
+    Generate {num_questions} matching questions based on the syllabus.
+
+    **Instructions**:
+    - Provide {num_questions} pairs of terms/items in two columns.
+    - Format the response EXACTLY as follows:
+
+    Example:
+    1. Term A1 | Match A1
+    2. Term A2 | Match A2
+    3. Term A3 | Match A3
+
+    **Output Format**:
+    - No extra explanations, no introductions, and no additional context.
+    - Each line should contain exactly one pair, separated by '|' symbol.
+    - Only output the pairs as shown in the example above.
     """
+
+    # Call Perplexity API
+    matching_pairs = query_perplexity(prompt)
+    print("Raw API Response:", matching_pairs)  # Debugging raw response
+
     matching_pairs = query_perplexity(prompt)
     col1, col2 = [], []
 
@@ -253,9 +321,11 @@ def generate_questions(syllabus, num_questions, question_type, difficulty):
 def main():
     st.title("Multilingual Question Generator")
 
+    # Input Type Selection
     input_type = st.sidebar.selectbox("Select Input Type", ["Text", "File", "Video", "Audio"])
     syllabus = None
 
+    # Handle different input types
     if input_type == "Text":
         syllabus = st.text_area("Enter Syllabus or Content")
 
@@ -284,19 +354,29 @@ def main():
                 f.write(uploaded_audio.read())
             syllabus = speech_to_text("uploaded_audio.wav", "en-US")
 
+    # Display extracted content
     if syllabus:
         st.subheader("Extracted Syllabus:")
         st.text_area("Extracted Content", syllabus, height=200)
 
+        # Question Generator Section
         st.subheader("Question Generator")
         question_type = st.selectbox("Select Question Type", ["MCQ", "Fill in the Blanks", "True/False", "Matching"])
         num_questions = st.number_input("Number of Questions", min_value=1, max_value=20, step=1)
         difficulty = st.selectbox("Difficulty Level", ["Easy", "Medium", "Hard"]).lower()
 
+        # Fetch Supported Languages
+        languages = get_supported_languages()
+        if "Error" in languages:
+            st.error("Could not fetch language options.")
+            return
+        selected_language = st.selectbox("Select Language", list(languages.keys()))
+        target_language_code = languages[selected_language]
 
-
+        # Generate Questions and Translate
         if st.button("Generate Questions"):
             with st.spinner("Generating questions..."):
+                # Generate questions (dummy logic, replace with actual implementation)
                 if question_type == "MCQ":
                     result = query_perplexity(f"Generate {num_questions} MCQs based on the following syllabus:\n\n{syllabus}\n\nDifficulty: {difficulty}.")
                 elif question_type == "Fill in the Blanks":
@@ -309,9 +389,10 @@ def main():
                     st.error("Invalid Question Type Selected.")
                     return
 
+                # Translate the output
+                translated_result = translate_text(result, target_language_code)
+                st.text_area("Translated Questions", translated_result, height=300)
 
-                st.success("Questions Generated!")
-                st.text_area("Generated Questions", result, height=300)
 
 
 if __name__ == "__main__":

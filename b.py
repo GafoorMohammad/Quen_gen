@@ -259,18 +259,17 @@ def generate_fill_in_the_blanks(syllabus, num_questions, difficulty):
     Syllabus: {syllabus}
 
     Instructions:
-    - Generate {num_questions} 'Fill in the Blank' questions about the topic "{syllabus}".
-    - For each question:
-        - The format must be: 
-          1. "Fill in the blank: [The sentence with a blank]."
-          2. The answer must follow immediately: "Answer: [The correct answer]."
-          3. Provide a brief explanation: "Explanation: [Why this answer is correct]."
-    - Number the questions starting from 1.
-    - Ensure that the answer and explanation are aligned with the difficulty level: {difficulty}.
-    - Do not add any extra text or explanations beyond this.
+    - Generate {num_questions} 'Fill in the Blank' questions based on the syllabus "{syllabus}".
+    - Each question must include a blank space represented as "__________" in the sentence.
+    - The format for each question must be as follows:
+      1. "Fill in the blank: [Question text with __________]."
+      2. Immediately follow with the answer: "Answer: [The correct answer]."
+      3. Provide a brief explanation of the answer: "Explanation: [Why this is correct]."
+    - Number the questions sequentially from 1 to {num_questions}.
+    - Ensure the content aligns with the difficulty level: {difficulty}.
+    - Do not include any additional text, summaries, or explanations beyond the required format.
     """
     return query_perplexity(prompt)
-
 
 
 def generate_true_false(syllabus, num_questions, difficulty):

@@ -1,6 +1,3 @@
-Here's the properly formatted `README.md` file content for your project:
-
-```markdown
 # Quen_gen
 
 Quen_gen is a Python project for generating and handling various tasks. This project uses FastAPI for building a web application and includes a set of dependencies specified in the `requirements.txt` file.

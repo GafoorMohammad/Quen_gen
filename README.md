@@ -25,7 +25,23 @@ cd Quen_gen
 
 It's recommended to use a virtual environment to manage dependencies. You can create a new virtual environment or activate an existing one:
 
-- **Create a new virtual environment** (if you don't have one already):
+- **Activate the virtual environment**:
+
+  On Windows:
+
+  ```bash
+  venv\Scripts\activate
+  ```
+
+  On macOS/Linux:
+
+  ```bash
+  source venv/bin/activate
+  ```
+
+  If you already have an existing virtual environment, simply activate it using the command above.
+
+  - **Create a new virtual environment** (if you don't have one already):
 
   On Windows:
 
@@ -39,21 +55,6 @@ It's recommended to use a virtual environment to manage dependencies. You can cr
   python3 -m venv venv
   ```
 
-- **Activate the virtual environment**:
-
-  On Windows:
-
-  ```bash
-  .\venv\Scripts\activate
-  ```
-
-  On macOS/Linux:
-
-  ```bash
-  source venv/bin/activate
-  ```
-
-  If you already have an existing virtual environment, simply activate it using the command above.
 
 ### 3. Install dependencies
 

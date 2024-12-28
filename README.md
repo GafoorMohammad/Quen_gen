@@ -47,6 +47,7 @@ It's recommended to use a virtual environment to manage dependencies. You can cr
 
   ```bash
   python -m venv venv
+  venv\Scripts\activate
   ```
 
   On macOS/Linux:

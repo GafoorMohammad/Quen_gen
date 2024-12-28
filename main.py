@@ -161,7 +161,6 @@ async def generate_mcq_endpoint(input: MCQInput, request: Request):
     # Return the MCQ response with unique IDs
     return {"request_id": request.state.request_id, "mcq": mcq_with_ids}
 
-
 @app.post("/generate-fill-in-the-blanks/")
 async def generate_fill_in_blanks_endpoint(input: MCQInput, request: Request):
     # Generate the questions using the refined prompt

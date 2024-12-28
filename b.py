@@ -256,43 +256,21 @@ def generate_mcq(syllabus, num_questions, difficulty):
 # Simulated response for generating fill-in-the-blank questions
 def generate_fill_in_the_blanks(syllabus, num_questions, difficulty):
     prompt = f"""
-    Syllabus:
-    {syllabus}
+    Syllabus: {syllabus}
 
     Instructions:
-    - Generate {num_questions} 'Fill in the Blank' questions.
-    - Format questions and answers exactly as shown in this example:
-
-    Questions:
-    1. Fill in the blank: The ____________ is the powerhouse of the cell.
-       Mitochondria
-       The mitochondria generate energy for cellular processes.
-    2. Fill in the blank: Water freezes at ____________ degrees Celsius.
-       Zero
-       Zero degrees Celsius is the freezing point of water.
-
-    Answers:
-    1. Mitochondria - The mitochondria generate energy for cellular processes.
-    2. Zero - Zero degrees Celsius is the freezing point of water.
-
-    Ensure all outputs are unique, accurate, and aligned with the syllabus.
-    Difficulty Level: {difficulty}.
+    - Generate {num_questions} 'Fill in the Blank' questions about the topic "{syllabus}".
+    - For each question:
+        - The format must be: 
+          1. "Fill in the blank: [The sentence with a blank]."
+          2. The answer must follow immediately: "Answer: [The correct answer]."
+          3. Provide a brief explanation: "Explanation: [Why this answer is correct]."
+    - Number the questions starting from 1.
+    - Ensure that the answer and explanation are aligned with the difficulty level: {difficulty}.
+    - Do not add any extra text or explanations beyond this.
     """
-    # Simulated response for testing
-    response = f"""
-    Questions:
-    1. Fill in the blank: The process of ____________ converts sunlight into chemical energy.
-       Photosynthesis
-       Photosynthesis is the process used by plants to convert light energy into chemical energy.
-    2. Fill in the blank: The capital city of France is ____________.
-       Paris
-       Paris is the capital and largest city of France.
+    return query_perplexity(prompt)
 
-    Answers:
-    1. Photosynthesis - Photosynthesis is the process used by plants to convert light energy into chemical energy.
-    2. Paris - Paris is the capital and largest city of France.
-    """
-    return response.strip()
 
 
 def generate_true_false(syllabus, num_questions, difficulty):

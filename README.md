@@ -82,11 +82,7 @@ Once the server is running, you can access the interactive API documentation at:
 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 This page provides an easy way to explore and test the available API endpoints.
-```
 
-Here's a comprehensive documentation of the API routes and payloads for the FastAPI application deployed on your local machine (`http://127.0.0.1:8000`).
-
----
 
 ## API Documentation
 

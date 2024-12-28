@@ -11,6 +11,9 @@ import random
 from pydub import AudioSegment
 # Load environment variables from .env 
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from fastapi import HTTPException
+
 
 load_dotenv()
 
@@ -138,9 +141,16 @@ def convert_video_to_text(video_path, language="en-US"):
         return transcription
     return "Failed to process the video."
 #Translation 
-def translate_text(text, target_language):
+class TextInput(BaseModel):
+    text: str
+
+def translate_text(text: str, target_language: str) -> str:
+    """Translate text using Google Translate API."""
     api_url = "https://translation.googleapis.com/language/translate/v2"
     api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
+
+    if not api_key:
+        raise HTTPException(status_code=500, detail="API key not configured.")
 
     params = {
         "q": text,
@@ -154,24 +164,30 @@ def translate_text(text, target_language):
         result = response.json()
         return result["data"]["translations"][0]["translatedText"]
     except requests.exceptions.RequestException as e:
-        return f"Error during translation: {e}"
-
-def get_supported_languages():
+        raise HTTPException(status_code=500, detail=f"Translation API error: {e}")
+    
+def get_supported_languages() -> dict:
+    """Fetch supported languages from Google Translate API."""
     api_url = "https://translation.googleapis.com/language/translate/v2/languages"
     api_key = os.getenv("GOOGLE_TRANSLATE_API_KEY")
 
+    if not api_key:
+        raise HTTPException(status_code=500, detail="API key not configured.")
+
     params = {
         "key": api_key,
-        "target": "en",  # Get language names in English
+        "target": "en",  # Fetch language names in English
     }
     try:
         response = requests.get(api_url, params=params)
         response.raise_for_status()
         result = response.json()
-        languages = {lang["name"]: lang["language"] for lang in result["data"]["languages"]}
-        return languages
+        return {lang["name"]: lang["language"] for lang in result["data"]["languages"]}
     except requests.exceptions.RequestException as e:
-        return {"Error": "Could not fetch languages"}
+        raise HTTPException(status_code=500, detail=f"Language API error: {e}")
+
+
+
 
 # Perplexity-based question generation
 def query_perplexity(prompt, model=MODEL):
@@ -182,15 +198,20 @@ def query_perplexity(prompt, model=MODEL):
         "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
         "Content-Type": "application/json",
     }
+    
+    # Modify temperature to 0 for deterministic output
     payload = {
         "model": model,
         "messages": [
             {"role": "system", "content": "You are a helpful assistant for generating educational questions."},
             {"role": "user", "content": prompt},
         ],
-        "temperature": 0.7,
-        "max_tokens": 10000,
+        "temperature": 0,  # Set temperature to 0 for deterministic responses
+        "max_tokens": 10000,  # Ensure an appropriate max token limit
+        # Optionally, add a seed parameter if supported by the API (uncomment below if supported)
+        "seed": 12345,  # Optional seed for deterministic responses (if supported by the API)
     }
+    
     try:
         response = requests.post(PERPLEXITY_API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
@@ -202,94 +223,137 @@ def query_perplexity(prompt, model=MODEL):
         return f"Error querying Perplexity API: {str(e)}"
 
 
+
 # Question generation functions with difficulty
 def generate_mcq(syllabus, num_questions, difficulty):
     prompt = f"""
     Syllabus:
     {syllabus}
 
-    Based on the syllabus above, generate {num_questions} multiple-choice questions (MCQs).
-    Provide 4 options for each question, and clearly indicate the correct answer.
+    Instructions:
+    - Generate {num_questions} multiple-choice questions (MCQs).
+    - Provide exactly 4 options for each question.
+    - Clearly indicate the correct answer and explain why it is correct.
+    - Format output strictly as follows:
+
+    Example:
+    Q1. What is the population of Dubai as of 2024?
+    A. 3.79 million
+    B. 3.295 million
+    C. 4.1 million
+    D. 5 million
+    Answer: A - Explanation: The population of Dubai as of 2024 is approximately 3.79 million, as stated in reliable sources.
+
+    Questions must be unique, meaningful, and ensure the structure: Question -> Options -> Answer -> Explanation.
     Difficulty Level: {difficulty}.
     """
-    return query_perplexity(prompt)
+    # Generate the MCQs
+    mcqs = query_perplexity(prompt)
+    return mcqs
 
+
+
+# Simulated response for generating fill-in-the-blank questions
 def generate_fill_in_the_blanks(syllabus, num_questions, difficulty):
     prompt = f"""
     Syllabus:
     {syllabus}
 
     Instructions:
-    - Generate {num_questions} 'Fill in the Blanks' questions.
-    - Do NOT repeat any context or explanation from the syllabus within the questions.
-    - Format the output **strictly** as below, or the response will be considered incorrect.
-    - Include concise answers and explanations at the end.
-
-    Format:
+    - Generate {num_questions} 'Fill in the Blank' questions.
+    - Format questions and answers exactly as shown in this example:
 
     Questions:
-    1. Fill in the blank: Question text with ____________.
-    2. Fill in the blank: Question text with ____________.
+    1. Fill in the blank: The ____________ is the powerhouse of the cell.
+       Mitochondria
+       The mitochondria generate energy for cellular processes.
+    2. Fill in the blank: Water freezes at ____________ degrees Celsius.
+       Zero
+       Zero degrees Celsius is the freezing point of water.
 
     Answers:
-    1. Correct Answer - Brief Explanation
-    2. Correct Answer - Brief Explanation
+    1. Mitochondria - The mitochondria generate energy for cellular processes.
+    2. Zero - Zero degrees Celsius is the freezing point of water.
 
-    Failure to strictly follow the format will result in rejection. Ensure all blanks are clear and concise.
+    Ensure all outputs are unique, accurate, and aligned with the syllabus.
     Difficulty Level: {difficulty}.
     """
-    return query_perplexity(prompt)
+    # Simulated response for testing
+    response = f"""
+    Questions:
+    1. Fill in the blank: The process of ____________ converts sunlight into chemical energy.
+       Photosynthesis
+       Photosynthesis is the process used by plants to convert light energy into chemical energy.
+    2. Fill in the blank: The capital city of France is ____________.
+       Paris
+       Paris is the capital and largest city of France.
+
+    Answers:
+    1. Photosynthesis - Photosynthesis is the process used by plants to convert light energy into chemical energy.
+    2. Paris - Paris is the capital and largest city of France.
+    """
+    return response.strip()
+
 
 def generate_true_false(syllabus, num_questions, difficulty):
     prompt = f"""
-    Syllabus:
-    {syllabus}
+    Topic: {syllabus}
 
-    Based on the syllabus above, generate {num_questions} True/False questions.
-    Clearly indicate the correct answers.
-    Difficulty Level: {difficulty}.
+    Instructions:
+    - Generate {num_questions} True/False questions about the topic "{syllabus}".
+    - Use the following strict format for each question:
+
+    Q<n>. <Question text>? (True/False)
+    Answer: <True or False>
+    Explanation: <Concise explanation for the answer>
+
+    Example:
+    Q1. Cricket is played with a ball and bat? (True/False)
+    Answer: True
+    Explanation: Cricket is a game played with a bat and ball between two teams.
+
+    Q2. A cricket team consists of 15 players? (True/False)
+    Answer: False
+    Explanation: A cricket team consists of 11 players, not 15.
+
+    Ensure:
+    - All questions are unique and align with the topic.
+    - The explanation is concise and factual without repeating the answer.
+    - The output is structured for easy parsing.
+    - Matches the difficulty level specified: {difficulty}.
     """
     return query_perplexity(prompt)
 
+    
 def generate_matching_questions(syllabus, num_questions, difficulty):
     prompt = f"""
     Syllabus:
     {syllabus}
 
-    Generate {num_questions} matching questions based on the syllabus.
-
-    **Instructions**:
-    - Provide {num_questions} pairs of terms/items in two columns.
-    - Format the response EXACTLY as follows:
+    Instructions:
+    - Generate {num_questions} matching pairs of terms/items.
+    - Strictly format the output as follows:
 
     Example:
     1. Term A1 | Match A1
     2. Term A2 | Match A2
     3. Term A3 | Match A3
 
-    **Output Format**:
-    - No extra explanations, no introductions, and no additional context.
-    - Each line should contain exactly one pair, separated by '|' symbol.
-    - Only output the pairs as shown in the example above.
+    Each line should have exactly one pair, separated by a '|' symbol.
+    Do NOT provide additional context or explanations.
+    Difficulty Level: {difficulty}.
     """
+    result = query_perplexity(prompt)  # Assuming this interacts with Perplexity AI
+    # Parse the result into structured data
+    pairs = [line.split(" | ") for line in result.split("\n") if " | " in line]
+    
+    # Separate columns and answers
+    column1 = [{"id": f"c1_item_{i+1}", "item": pair[0]} for i, pair in enumerate(pairs)]
+    column2 = [{"id": f"c2_item_{i+1}", "item": pair[1]} for i, pair in enumerate(pairs)]
+    answers = [{"column1_id": f"c1_item_{i+1}", "column2_id": f"c2_item_{i+1}"} for i in range(len(pairs))]
 
-    # Call Perplexity API
-    matching_pairs = query_perplexity(prompt)
-    print("Raw API Response:", matching_pairs)  # Debugging raw response
+    return column1, column2, answers
 
-    matching_pairs = query_perplexity(prompt)
-    col1, col2 = [], []
-
-    # Split pairs and shuffle
-    for pair in matching_pairs.split('\n'):
-        if '|' in pair:
-            left, right = map(str.strip, pair.split('|'))
-            col1.append(left)
-            col2.append(right)
-
-    random.shuffle(col1)
-    random.shuffle(col2)
-    return col1, col2
   
 def generate_questions(syllabus, num_questions, question_type, difficulty):
     """

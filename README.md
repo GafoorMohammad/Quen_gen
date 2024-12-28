@@ -21,7 +21,41 @@ git clone https://github.com/GafoorMohammad/Quen_gen.git
 cd Quen_gen
 ```
 
-### 2. Install dependencies
+### 2. Create or activate a Python environment
+
+It's recommended to use a virtual environment to manage dependencies. You can create a new virtual environment or activate an existing one:
+
+- **Create a new virtual environment** (if you don't have one already):
+
+  On Windows:
+
+  ```bash
+  python -m venv venv
+  ```
+
+  On macOS/Linux:
+
+  ```bash
+  python3 -m venv venv
+  ```
+
+- **Activate the virtual environment**:
+
+  On Windows:
+
+  ```bash
+  .\venv\Scripts\activate
+  ```
+
+  On macOS/Linux:
+
+  ```bash
+  source venv/bin/activate
+  ```
+
+  If you already have an existing virtual environment, simply activate it using the command above.
+
+### 3. Install dependencies
 
 Make sure you have Python and pip installed, then install the required dependencies from `requirements.txt`:
 
@@ -29,7 +63,7 @@ Make sure you have Python and pip installed, then install the required dependenc
 pip install -r requirements.txt
 ```
 
-### 3. Run the application
+### 4. Run the application
 
 To start the FastAPI app, use Uvicorn to run the server:
 
@@ -39,7 +73,7 @@ uvicorn main:app --reload
 
 This command will start a local development server. The `--reload` flag enables automatic reloading when you make changes to the code.
 
-### 4. Access the API documentation
+### 5. Access the API documentation
 
 Once the server is running, you can access the interactive API documentation at:
 
@@ -47,3 +81,4 @@ Once the server is running, you can access the interactive API documentation at:
 
 This page provides an easy way to explore and test the available API endpoints.
 ```
+

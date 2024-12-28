@@ -164,55 +164,64 @@ async def generate_mcq_endpoint(input: MCQInput, request: Request):
 
 @app.post("/generate-fill-in-the-blanks/")
 async def generate_fill_in_blanks_endpoint(input: MCQInput, request: Request):
+    # Generate the questions using the refined prompt
     blanks = generate_fill_in_the_blanks(
         input.syllabus, input.num_questions, input.difficulty
     )
-    try:
-        if "Answers:" not in blanks:
-            raise ValueError("Response does not contain an 'Answers:' section.")
-        
-        # Split Questions and Answers
-        questions_section, answers_section = blanks.split("Answers:")
-        questions_section = questions_section.strip()
-        answers_section = answers_section.strip()
-        
-        blanks_with_ids = []
-        for line in questions_section.split("\n"):
-            line = line.strip()
-            if line.startswith("1.") or line.startswith("2."):
-                parts = line.split(": ", 1)
-                if len(parts) == 2:
-                    question_text = parts[1].strip()
-                    blanks_with_ids.append({"question": question_text})
-        
-        # Match answers with explanations
-        answers = []
-        for line in answers_section.split("\n"):
-            line = line.strip()
-            if line.startswith("1.") or line.startswith("2."):
-                answer_parts = line.split(" - ", 1)
-                if len(answer_parts) == 2:
-                    correct_answer, explanation = answer_parts
-                    answers.append({"answer": correct_answer.strip(), "explanation": explanation.strip()})
-        
-        # Combine questions with answers
-        final_output = [
-            {
-                "id": str(uuid.uuid4()),
-                "question": q["question"],
-                "answer": a["answer"],
-                "explanation": a["explanation"],
-            }
-            for q, a in zip(blanks_with_ids, answers)
-        ]
-
+    
+    # Log the raw output for debugging purposes
+    print("Raw Output from Generator:\n", blanks)
+    
+    blanks_with_details = []
+    
+    # Ensure there is content to process
+    if not blanks.strip():
         return {
             "request_id": request.state.request_id,
-            "fill_in_the_blanks": final_output
+            "fill_in_the_blanks": [],
+            "error": "No questions were generated. Please retry with a clearer syllabus or adjusted difficulty."
         }
     
-    except Exception as e:
-        return {"error": f"Failed to parse questions: {str(e)}", "raw_response": blanks}
+    # Split the output into individual questions
+    question_blocks = blanks.strip().split("\n\n")
+    
+    # Process each block
+    for idx, question_block in enumerate(question_blocks):
+        try:
+            # Split the question into its components
+            lines = question_block.strip().split("\n")
+            
+            # If there are 3 parts (question, answer, explanation), process them
+            if len(lines) == 3:
+                question_text = lines[0].replace("Fill in the blank:", "").strip()
+                answer = lines[1].replace("Answer:", "").strip()
+                explanation = lines[2].replace("Explanation:", "").strip()
+
+                blanks_with_details.append({
+                    "id": str(uuid.uuid4()),
+                    "question": question_text,
+                    "answer": answer,
+                    "explanation": explanation,
+                })
+            else:
+                print(f"Unexpected format for question block {idx + 1}: {question_block}")
+        except Exception as e:
+            print(f"Error processing question block {idx + 1}: {question_block} - {e}")
+    
+    # Return error if no valid questions were found
+    if not blanks_with_details:
+        return {
+            "request_id": request.state.request_id,
+            "fill_in_the_blanks": [],
+            "error": "Generated questions were improperly formatted. Please retry."
+        }
+
+    # Return valid questions
+    return {
+        "request_id": request.state.request_id,
+        "fill_in_the_blanks": blanks_with_details,
+    }
+
 
 
 @app.post("/generate-true-false/")
